@@ -1,0 +1,1 @@
+curl -H "X-Amz-Target: DynamoDB_20120810.Scan" -X POST -d '{"AttributesToGet":null,"ExclusiveStartKey":null,"ReturnConsumedCapacity":"NONE","Limit":null,"ScanFilter":null,"Select":null,"Segment":null,"TableName":"test-godynamo-livetest","TotalSegments":null}' http://localhost:12333/

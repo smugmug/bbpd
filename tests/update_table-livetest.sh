@@ -1,0 +1,1 @@
+curl -H "X-Amz-Target: DynamoDB_20120810.UpdateTable" -X POST -d '{"TableName":"test-godynamo-livetest","ProvisionedThroughput":{"ReadCapacityUnits":200,"WriteCapacityUnits":200}}' http://localhost:12333/

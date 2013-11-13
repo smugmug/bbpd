@@ -1,0 +1,2 @@
+#!/usr/bin/env zsh
+/usr/bin/bbpd & disown

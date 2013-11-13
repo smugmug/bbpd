@@ -1,0 +1,37 @@
+#!/bin/zsh
+
+PROG=bbpd
+DAEMON=bbpd_daemon
+INSTALL_PATH=/usr/bin
+
+test -x $INSTALL_PATH/$PROG   || exit 0
+test -x $INSTALL_PATH/$DAEMON || exit 0
+
+case "$1" in
+    start)
+        echo -n "**** starting bbpd as daemon\n"
+        $INSTALL_PATH/$DAEMON || true
+        $INSTALL_PATH/$DAEMON || true
+        echo "bbpd - started\n"
+        ;;
+    stop)
+        echo -n "**** stopping bbpd\n"
+        killall $PROG || true
+        echo "bbpd - stopped\n"
+        ;;
+    status)
+        curl "http://localhost:12333/Status?indent=1&compact=1"
+        ;;
+    restart)
+        echo -n "**** stopping bbpd\n"
+        killall $PROG || true
+        echo " - stopped"
+        echo -n "**** starting bbpd as daemon\n"
+        $INSTALL_PATH/$DAEMON || true
+        $INSTALL_PATH/$DAEMON || true
+        echo "bbpd - started\n"
+        ;;
+
+esac
+
+exit 0

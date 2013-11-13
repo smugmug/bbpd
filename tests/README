@@ -1,0 +1,7 @@
+These tests must be run in the correct order to be useful.
+
+First run the create-table test, then some tests to insert items (item-operations, batch_write*).
+
+Then you can try some of the reading tests (batch_get*,scan,query)
+
+Remember to delete the table when you are done!

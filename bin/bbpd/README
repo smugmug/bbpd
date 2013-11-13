@@ -1,0 +1,4 @@
+bbpd.conf is used to configure Ubuntu upstart.
+
+bbpd_ctl and bbpd daemon are sample wrappers for launching bbpd.
+
