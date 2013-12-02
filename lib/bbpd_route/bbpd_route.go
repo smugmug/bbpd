@@ -271,10 +271,6 @@ func CompatHandler(w http.ResponseWriter, req *http.Request) {
 		http.Error(w, e, http.StatusBadRequest)
 		return
 	}
-	e := fmt.Sprintf("bbpd_route.CompatHandler:unknown termination")
-	slog.SLog(syslog.LOG_ERR,e,true)
-	http.Error(w, e, http.StatusBadRequest)
-	return
 }
 
 // StartBBPD is where the proxy http server is started.

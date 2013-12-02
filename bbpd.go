@@ -52,7 +52,7 @@ func sigHandle(c <-chan os.Signal) {
 			syscall.SIGQUIT,
 			syscall.SIGHUP,
 			syscall.SIGINT:
-			log.Printf("*** caught signal %d, stop\n", sig)
+			log.Printf("*** caught signal %v, stop\n", sig)
 			stop_err := bbpd_runinfo.StopBBPD()
 			if stop_err != nil {
 				slog.SLog(syslog.LOG_ERR,"no server running?",true)
