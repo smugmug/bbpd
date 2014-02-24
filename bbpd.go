@@ -1,5 +1,5 @@
 // Copyright (c) 2013,2014 SmugMug, Inc. All rights reserved.
-// 
+//
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions are
 // met:
@@ -9,7 +9,7 @@
 //       copyright notice, this list of conditions and the following
 //       disclaimer in the documentation and/or other materials provided
 //       with the distribution.
-// 
+//
 // THIS SOFTWARE IS PROVIDED BY SMUGMUG, INC. ``AS IS'' AND ANY
 // EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
 // IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
@@ -50,8 +50,7 @@ func sigHandle(c <-chan os.Signal) {
 		switch sig.(os.Signal) {
 		case syscall.SIGTERM,
 			syscall.SIGQUIT,
-			syscall.SIGHUP,
-			syscall.SIGINT:
+			syscall.SIGHUP:
 			log.Printf("*** caught signal %v, stop\n", sig)
 			stop_err := bbpd_runinfo.StopBBPD()
 			if stop_err != nil {
@@ -61,6 +60,9 @@ func sigHandle(c <-chan os.Signal) {
 			time.Sleep(time.Duration(5) * time.Second)
 			log.Printf("bbpd exit\n")
 			os.Exit(0)
+		case syscall.SIGINT:
+			log.Printf("*** caught signal %v, stop\n", sig)
+			panic("bbpd panic")
 		}
 	}
 }
