@@ -1,5 +1,5 @@
 // Copyright (c) 2013,2014 SmugMug, Inc. All rights reserved.
-// 
+//
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions are
 // met:
@@ -9,7 +9,7 @@
 //       copyright notice, this list of conditions and the following
 //       disclaimer in the documentation and/or other materials provided
 //       with the distribution.
-// 
+//
 // THIS SOFTWARE IS PROVIDED BY SMUGMUG, INC. ``AS IS'' AND ANY
 // EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
 // IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
@@ -26,25 +26,24 @@
 package query_route
 
 import (
-	"net/http"
-	"fmt"
-	"log/syslog"
-	"strings"
-	"io"
-	"time"
-	"io/ioutil"
 	"encoding/json"
-	"github.com/smugmug/bbpd/lib/route_response"
+	"fmt"
 	"github.com/smugmug/bbpd/lib/bbpd_runinfo"
-	query "github.com/smugmug/godynamo/endpoints/query"
-	ep "github.com/smugmug/godynamo/endpoint"
 	raw "github.com/smugmug/bbpd/lib/raw_post_route"
-	"github.com/bradclawsie/slog"
+	"github.com/smugmug/bbpd/lib/route_response"
+	ep "github.com/smugmug/godynamo/endpoint"
+	query "github.com/smugmug/godynamo/endpoints/query"
+	"io"
+	"io/ioutil"
+	"log"
+	"net/http"
+	"strings"
+	"time"
 )
 
 // RawPostHandler relays the Query request to Dynamo directly.
 func RawPostHandler(w http.ResponseWriter, req *http.Request) {
-	raw.RawPostReq(w,req,query.QUERY_ENDPOINT)
+	raw.RawPostReq(w, req, query.QUERY_ENDPOINT)
 }
 
 // QueryHandler relays the Query request to Dynamo but first validates it through a local type.
@@ -53,51 +52,51 @@ func QueryHandler(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 	start := time.Now()
-	if (req.Method != "POST") {
+	if req.Method != "POST" {
 		e := "query_route.QueryHandler:method only supports POST"
-		slog.SLog(syslog.LOG_ERR,e,false)
+		log.Printf(e)
 		http.Error(w, e, http.StatusBadRequest)
 		return
 	}
-	pathElts := strings.Split(req.URL.Path,"/")
+	pathElts := strings.Split(req.URL.Path, "/")
 	if len(pathElts) != 2 {
 		e := "query_route.QueryHandler:cannot parse path. try /create, call as POST"
-		slog.SLog(syslog.LOG_ERR,e,false)
+		log.Printf(e)
 		http.Error(w, e, http.StatusBadRequest)
 		return
 	}
 
 	bodybytes, read_err := ioutil.ReadAll(req.Body)
 	if read_err != nil && read_err != io.EOF {
-		e := fmt.Sprintf("query_route.QueryHandler err reading req body: %s",read_err.Error())
-		slog.SLog(syslog.LOG_ERR,e,true)
+		e := fmt.Sprintf("query_route.QueryHandler err reading req body: %s", read_err.Error())
+		log.Printf(e)
 		http.Error(w, e, http.StatusInternalServerError)
 		return
 	}
-        req.Body.Close()
+	req.Body.Close()
 
 	var q query.Query
-	um_err := json.Unmarshal(bodybytes,&q)
+	um_err := json.Unmarshal(bodybytes, &q)
 
 	if um_err != nil {
-		e := fmt.Sprintf("query_route.QueryHandler unmarshal err on %s to Create: %s",string(bodybytes),um_err.Error())
-		slog.SLog(syslog.LOG_ERR,e,true)
+		e := fmt.Sprintf("query_route.QueryHandler unmarshal err on %s to Create: %s", string(bodybytes), um_err.Error())
+		log.Printf(e)
 		http.Error(w, e, http.StatusInternalServerError)
 		return
 	}
 
-	resp_body,code,resp_err := q.EndpointReq()
+	resp_body, code, resp_err := q.EndpointReq()
 
 	if resp_err != nil {
 		e := fmt.Sprintf("query_route.QueryHandler:err %s",
 			resp_err.Error())
-		slog.SLog(syslog.LOG_ERR,e,true)
-	 	http.Error(w, e, http.StatusInternalServerError)
-	 	return
+		log.Printf(e)
+		http.Error(w, e, http.StatusInternalServerError)
+		return
 	}
 
 	if ep.HttpErr(code) {
-		route_response.WriteError(w,code,"query_route.QueryHandler",resp_body)
+		route_response.WriteError(w, code, "query_route.QueryHandler", resp_body)
 		return
 	}
 
@@ -109,7 +108,7 @@ func QueryHandler(w http.ResponseWriter, req *http.Request) {
 		start,
 		query.ENDPOINT_NAME)
 	if mr_err != nil {
-		e := fmt.Sprintf("query_route.QueryHandler %s",mr_err.Error())
-		slog.SLog(syslog.LOG_ERR,e,true)
+		e := fmt.Sprintf("query_route.QueryHandler %s", mr_err.Error())
+		log.Printf(e)
 	}
 }

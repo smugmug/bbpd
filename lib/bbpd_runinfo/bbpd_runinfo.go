@@ -1,5 +1,5 @@
 // Copyright (c) 2013,2014 SmugMug, Inc. All rights reserved.
-// 
+//
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions are
 // met:
@@ -9,7 +9,7 @@
 //       copyright notice, this list of conditions and the following
 //       disclaimer in the documentation and/or other materials provided
 //       with the distribution.
-// 
+//
 // THIS SOFTWARE IS PROVIDED BY SMUGMUG, INC. ``AS IS'' AND ANY
 // EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
 // IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
@@ -27,14 +27,13 @@ package bbpd_runinfo
 
 import (
 	"fmt"
-	"sync"
-	"log/syslog"
+	"log"
 	"net/http"
-	"github.com/bradclawsie/slog"
+	"sync"
 )
 
 var (
-	accepting bool
+	accepting  bool
 	accept_mut *sync.RWMutex
 )
 
@@ -51,7 +50,7 @@ func SetBBPDAccept() {
 }
 
 // StopBBPD executes any shutdown tasks.
-func StopBBPD() (error) {
+func StopBBPD() error {
 	accept_mut.Lock()
 	accepting = false
 	accept_mut.Unlock()
@@ -60,7 +59,7 @@ func StopBBPD() (error) {
 
 // IsAccepting returns the value of server accepting state that can be set when bbpd should
 // stop accepting connections.
-func IsAccepting() (bool) {
+func IsAccepting() bool {
 	accept_mut.RLock()
 	a := accepting
 	accept_mut.RUnlock()
@@ -68,11 +67,11 @@ func IsAccepting() (bool) {
 }
 
 // BBPDAbortIfClosed returns a 503 if the server accepting state has been set to false.
-func BBPDAbortIfClosed(w http.ResponseWriter) (bool) {
+func BBPDAbortIfClosed(w http.ResponseWriter) bool {
 	closed := !IsAccepting()
 	if closed {
 		e := fmt.Sprintf("bbpd no longer accepting connections")
-		slog.SLog(syslog.LOG_NOTICE,e,false)
+		log.Printf(e)
 		http.Error(w, e, http.StatusServiceUnavailable)
 	}
 	return closed

@@ -26,21 +26,19 @@
 package main
 
 import (
-	"runtime"
-	"log"
 	"fmt"
-	"syscall"
-	"os"
-	"time"
-	"os/signal"
-	"log/syslog"
-	"github.com/smugmug/bbpd/lib/bbpd_runinfo"
 	"github.com/smugmug/bbpd/lib/bbpd_const"
 	"github.com/smugmug/bbpd/lib/bbpd_route"
-	"github.com/bradclawsie/slog"
+	"github.com/smugmug/bbpd/lib/bbpd_runinfo"
 	conf "github.com/smugmug/godynamo/conf"
 	conf_file "github.com/smugmug/godynamo/conf_file"
 	conf_iam "github.com/smugmug/godynamo/conf_iam"
+	"log"
+	"os"
+	"os/signal"
+	"runtime"
+	"syscall"
+	"time"
 )
 
 // handle signals. we prefer 1,2,3,15
@@ -54,7 +52,7 @@ func sigHandle(c <-chan os.Signal) {
 			log.Printf("*** caught signal %v, stop\n", sig)
 			stop_err := bbpd_runinfo.StopBBPD()
 			if stop_err != nil {
-				slog.SLog(syslog.LOG_ERR,"no server running?",true)
+				log.Printf("no server running?")
 			}
 			log.Printf("sleeping for 5 seconds\n")
 			time.Sleep(time.Duration(5) * time.Second)
@@ -70,31 +68,30 @@ func sigHandle(c <-chan os.Signal) {
 func main() {
 	runtime.GOMAXPROCS(runtime.NumCPU())
 	sigchan := make(chan os.Signal, 1)
-        signal.Notify(sigchan)
+	signal.Notify(sigchan)
 	go sigHandle(sigchan)
-	slog.Log_Hello = "bbpd"
 
 	// conf file must be read in before anything else, to initialize permissions etc
-        conf_file.Read()
+	conf_file.Read()
 	if conf.Vals.Initialized == false {
 		panic("the conf.Vals global conf struct has not been initialized, " +
 			"invoke with conf_file.Read()")
 	} else {
-		slog.SLog(syslog.LOG_NOTICE,"global conf.Vals initialized",true)
+		log.Printf("global conf.Vals initialized")
 	}
 
 	// the naive "fire and forget" IAM roles initializer and watcher.
 	iam_ready_chan := make(chan bool)
 	go conf_iam.GoIAM(iam_ready_chan)
-	iam_ready := <- iam_ready_chan
+	iam_ready := <-iam_ready_chan
 	if !iam_ready {
-		slog.SLog(syslog.LOG_NOTICE,"IAM not enabled, using access/secret",true)
+		log.Printf("IAM not enabled, using access/secret")
 	}
 
-	slog.SLog(syslog.LOG_NOTICE,"starting bbpd...",true)
+	log.Printf("starting bbpd...")
 	pid := syscall.Getpid()
-	e := fmt.Sprintf("stop with ctrl-c or kill -[1,2,3,15] %v",pid)
-	slog.SLog(syslog.LOG_NOTICE,e,true)
-	ports := []int{bbpd_const.PORT,bbpd_const.PORT2}
+	e := fmt.Sprintf("stop with ctrl-c or kill -[1,2,3,15] %v", pid)
+	log.Printf(e)
+	ports := []int{bbpd_const.PORT, bbpd_const.PORT2}
 	log.Fatal(bbpd_route.StartBBPD(ports))
 }

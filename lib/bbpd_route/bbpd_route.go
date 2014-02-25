@@ -1,5 +1,5 @@
 // Copyright (c) 2013,2014 SmugMug, Inc. All rights reserved.
-// 
+//
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions are
 // met:
@@ -9,7 +9,7 @@
 //       copyright notice, this list of conditions and the following
 //       disclaimer in the documentation and/or other materials provided
 //       with the distribution.
-// 
+//
 // THIS SOFTWARE IS PROVIDED BY SMUGMUG, INC. ``AS IS'' AND ANY
 // EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
 // IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
@@ -26,45 +26,44 @@
 package bbpd_route
 
 import (
-	"time"
-	"errors"
 	"encoding/json"
-	"net"
-	"net/http"
+	"errors"
 	"fmt"
-	"strings"
-	"strconv"
-	"log/syslog"
-	"github.com/smugmug/bbpd/lib/bbpd_const"
-	"github.com/smugmug/godynamo/aws_const"
-	desc "github.com/smugmug/godynamo/endpoints/describe_table"
-	"github.com/smugmug/bbpd/lib/describe_table_route"
-	list "github.com/smugmug/godynamo/endpoints/list_tables"
-	"github.com/smugmug/bbpd/lib/list_tables_route"
-	create "github.com/smugmug/godynamo/endpoints/create_table"
-	"github.com/smugmug/bbpd/lib/create_table_route"
-	update_table "github.com/smugmug/godynamo/endpoints/update_table"
-	"github.com/smugmug/bbpd/lib/update_table_route"
-	put "github.com/smugmug/godynamo/endpoints/put_item"
-	"github.com/smugmug/bbpd/lib/put_item_route"
-	get "github.com/smugmug/godynamo/endpoints/get_item"
-	"github.com/smugmug/bbpd/lib/get_item_route"
-	bgi "github.com/smugmug/godynamo/endpoints/batch_get_item"
 	"github.com/smugmug/bbpd/lib/batch_get_item_route"
-	bwi "github.com/smugmug/godynamo/endpoints/batch_write_item"
 	"github.com/smugmug/bbpd/lib/batch_write_item_route"
-	delete_item "github.com/smugmug/godynamo/endpoints/delete_item"
+	"github.com/smugmug/bbpd/lib/bbpd_const"
+	"github.com/smugmug/bbpd/lib/bbpd_runinfo"
+	"github.com/smugmug/bbpd/lib/create_table_route"
 	"github.com/smugmug/bbpd/lib/delete_item_route"
-	update_item "github.com/smugmug/godynamo/endpoints/update_item"
-	"github.com/smugmug/bbpd/lib/update_item_route"
-	query "github.com/smugmug/godynamo/endpoints/query"
+	"github.com/smugmug/bbpd/lib/describe_table_route"
+	"github.com/smugmug/bbpd/lib/get_item_route"
+	"github.com/smugmug/bbpd/lib/list_tables_route"
+	"github.com/smugmug/bbpd/lib/put_item_route"
 	"github.com/smugmug/bbpd/lib/query_route"
-	scan "github.com/smugmug/godynamo/endpoints/scan"
-	"github.com/smugmug/bbpd/lib/scan_route"
 	"github.com/smugmug/bbpd/lib/raw_post_route"
 	"github.com/smugmug/bbpd/lib/route_response"
-	"github.com/smugmug/bbpd/lib/bbpd_runinfo"
-	"github.com/bradclawsie/slog"
+	"github.com/smugmug/bbpd/lib/scan_route"
+	"github.com/smugmug/bbpd/lib/update_item_route"
+	"github.com/smugmug/bbpd/lib/update_table_route"
+	"github.com/smugmug/godynamo/aws_const"
+	bgi "github.com/smugmug/godynamo/endpoints/batch_get_item"
+	bwi "github.com/smugmug/godynamo/endpoints/batch_write_item"
+	create "github.com/smugmug/godynamo/endpoints/create_table"
+	delete_item "github.com/smugmug/godynamo/endpoints/delete_item"
+	desc "github.com/smugmug/godynamo/endpoints/describe_table"
+	get "github.com/smugmug/godynamo/endpoints/get_item"
+	list "github.com/smugmug/godynamo/endpoints/list_tables"
+	put "github.com/smugmug/godynamo/endpoints/put_item"
+	query "github.com/smugmug/godynamo/endpoints/query"
+	scan "github.com/smugmug/godynamo/endpoints/scan"
+	update_item "github.com/smugmug/godynamo/endpoints/update_item"
+	update_table "github.com/smugmug/godynamo/endpoints/update_table"
+	"log"
+	"net"
+	"net/http"
+	"strconv"
+	"strings"
+	"time"
 
 	delete_table "github.com/smugmug/godynamo/endpoints/delete_table"
 	// undelete to enable table deletions (dangerous!)
@@ -72,48 +71,45 @@ import (
 )
 
 const (
-	LOCALHOST		= "localhost"
+	STATUSPATH           = "/Status"
+	STATUSTABLEPATH      = "/StatusTable/"
+	RAWPOSTPATH          = "/RawPost/"
+	DESCRIBETABLEPATH    = "/" + desc.ENDPOINT_NAME
+	DESCRIBETABLEGETPATH = "/" + desc.ENDPOINT_NAME + "/"
+	DELETETABLEPATH      = "/" + delete_table.ENDPOINT_NAME
+	DELETETABLEGETPATH   = "/" + delete_table.ENDPOINT_NAME + "/"
+	LISTTABLESPATH       = "/" + list.ENDPOINT_NAME
+	CREATETABLEPATH      = "/" + create.ENDPOINT_NAME
+	UPDATETABLEPATH      = "/" + update_table.ENDPOINT_NAME
+	PUTITEMPATH          = "/" + put.ENDPOINT_NAME
+	GETITEMPATH          = "/" + get.ENDPOINT_NAME
+	BATCHGETITEMPATH     = "/" + bgi.ENDPOINT_NAME
+	BATCHWRITEITEMPATH   = "/" + bwi.ENDPOINT_NAME
+	DELETEITEMPATH       = "/" + delete_item.ENDPOINT_NAME
+	UPDATEITEMPATH       = "/" + update_item.ENDPOINT_NAME
+	QUERYPATH            = "/" + query.ENDPOINT_NAME
+	SCANPATH             = "/" + scan.ENDPOINT_NAME
 
-	STATUSPATH		= "/Status"
-	STATUSTABLEPATH		= "/StatusTable/"
-	RAWPOSTPATH		= "/RawPost/"
-	DESCRIBETABLEPATH	= "/" + desc.ENDPOINT_NAME
-	DESCRIBETABLEGETPATH	= "/" + desc.ENDPOINT_NAME + "/"
-	DELETETABLEPATH		= "/" + delete_table.ENDPOINT_NAME
-	DELETETABLEGETPATH	= "/" + delete_table.ENDPOINT_NAME + "/"
-	LISTTABLESPATH		= "/" + list.ENDPOINT_NAME
-	CREATETABLEPATH		= "/" + create.ENDPOINT_NAME
-	UPDATETABLEPATH		= "/" + update_table.ENDPOINT_NAME
-	PUTITEMPATH		= "/" + put.ENDPOINT_NAME
-	GETITEMPATH		= "/" + get.ENDPOINT_NAME
-	BATCHGETITEMPATH	= "/" + bgi.ENDPOINT_NAME
-	BATCHWRITEITEMPATH	= "/" + bwi.ENDPOINT_NAME
-	DELETEITEMPATH		= "/" + delete_item.ENDPOINT_NAME
-	UPDATEITEMPATH		= "/" + update_item.ENDPOINT_NAME
-	QUERYPATH               = "/" + query.ENDPOINT_NAME
-	SCANPATH                = "/" + scan.ENDPOINT_NAME
-
-	COMPATPATH              = "/"
+	COMPATPATH = "/"
 )
 
 var (
-	// the port this invocation is actually listening on
-	ListenPort *int
-	availableGetHandlers []string
+	availableGetHandlers  []string
 	availablePostHandlers []string
-	availableHandlers []string
-	srv *http.Server
+	availableHandlers     []string
+	srv                   *http.Server
+	port                  *int
 )
 
 type Status_Struct struct {
-	Status string
+	Status            string
 	AvailableHandlers []string
-	Args map[string] string
+	Args              map[string]string
 }
 
 func init() {
 	// we want this to be initialized to be unuseable
-	ListenPort = nil
+	port = nil
 	// available handlers
 	availableGetHandlers = []string{
 		DESCRIBETABLEGETPATH,
@@ -134,9 +130,17 @@ func init() {
 		RAWPOSTPATH,
 		COMPATPATH,
 	}
-	availableHandlers = append(availableHandlers,availableGetHandlers...)
-	availableHandlers = append(availableHandlers,availablePostHandlers...)
+	availableHandlers = append(availableHandlers, availableGetHandlers...)
+	availableHandlers = append(availableHandlers, availablePostHandlers...)
 	srv = nil
+}
+
+func Get_port() int {
+	if port == nil {
+		return 0
+	} else {
+		return *port
+	}
 }
 
 // StatusHandler displays available handlers.
@@ -144,22 +148,22 @@ func statusHandler(w http.ResponseWriter, req *http.Request) {
 	if bbpd_runinfo.BBPDAbortIfClosed(w) {
 		return
 	}
-	if (req.Method != "GET") {
+	if req.Method != "GET" {
 		e := "method only supports GET"
 		http.Error(w, e, http.StatusBadRequest)
 		return
 	}
 	var ss Status_Struct
-	ss.Args = make(map[string] string)
+	ss.Args = make(map[string]string)
 	ss.Status = "ready"
 
 	ss.Args[bbpd_const.COMPACT] = "set query arg compact=1 to only receive the response body"
-	ss.Args[bbpd_const.INDENT]  = "set query arg indent=1 to indent the top-level json"
+	ss.Args[bbpd_const.INDENT] = "set query arg indent=1 to indent the top-level json"
 	ss.AvailableHandlers = availableHandlers
-	sj,sj_err := json.Marshal(ss)
+	sj, sj_err := json.Marshal(ss)
 	if sj_err != nil {
-		e := fmt.Sprintf("bbpd_route.statusHandler:status marshal err %s",sj_err.Error())
-		slog.SLog(syslog.LOG_ERR,e,true)
+		e := fmt.Sprintf("bbpd_route.statusHandler:status marshal err %s", sj_err.Error())
+		log.Printf(e)
 		http.Error(w, e, http.StatusInternalServerError)
 		return
 	}
@@ -172,14 +176,14 @@ func statusHandler(w http.ResponseWriter, req *http.Request) {
 		time.Now(),
 		"Status")
 	if mr_err != nil {
-	 	e := fmt.Sprintf("bbpd_route.StatusHandler %s",mr_err.Error())
-		slog.SLog(syslog.LOG_ERR,e,true)
+		e := fmt.Sprintf("bbpd_route.StatusHandler %s", mr_err.Error())
+		log.Printf(e)
 	}
 }
 
 // can we use this port?
-func canAssignPort(requestedPort int) (bool) {
-	_,err := net.Dial("tcp",LOCALHOST+":"+strconv.Itoa(requestedPort))
+func canAssignPort(requestedPort int) bool {
+	_, err := net.Dial("tcp", bbpd_const.LOCALHOST+":"+strconv.Itoa(requestedPort))
 	return err != nil
 }
 
@@ -195,10 +199,10 @@ func CompatHandler(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 	// look for the X-Amz-Target header
-	target_,target_ok := req.Header[aws_const.AMZ_TARGET_HDR]
-	if !target_ok  {
-		e := fmt.Sprintf("bbpd_route.CompatHandler:missing %s",aws_const.AMZ_TARGET_HDR)
-		slog.SLog(syslog.LOG_ERR,e,true)
+	target_, target_ok := req.Header[aws_const.AMZ_TARGET_HDR]
+	if !target_ok {
+		e := fmt.Sprintf("bbpd_route.CompatHandler:missing %s", aws_const.AMZ_TARGET_HDR)
+		log.Printf(e)
 		http.Error(w, e, http.StatusBadRequest)
 		return
 	}
@@ -206,11 +210,11 @@ func CompatHandler(w http.ResponseWriter, req *http.Request) {
 	normalized_target := target
 	target_version_delim := "."
 	// allow the header to have the API version string or not
-	if strings.Contains(target,target_version_delim) {
-		vers_target := strings.SplitN(target,target_version_delim,2)
+	if strings.Contains(target, target_version_delim) {
+		vers_target := strings.SplitN(target, target_version_delim, 2)
 		if vers_target[0] != aws_const.CURRENT_API_VERSION {
-			e := fmt.Sprintf("bbpd_route.CompatHandler:unsupported API version '%s'",vers_target[0])
-			slog.SLog(syslog.LOG_ERR,e,true)
+			e := fmt.Sprintf("bbpd_route.CompatHandler:unsupported API version '%s'", vers_target[0])
+			log.Printf(e)
 			http.Error(w, e, http.StatusBadRequest)
 			return
 		}
@@ -219,55 +223,55 @@ func CompatHandler(w http.ResponseWriter, req *http.Request) {
 	endpoint_path := "/" + normalized_target
 	if endpoint_path == COMPATPATH || normalized_target == "" {
 		e := fmt.Sprintf("bbpd_route.CompatHandler:must call named endpoint")
-		slog.SLog(syslog.LOG_ERR,e,true)
+		log.Printf(e)
 		http.Error(w, e, http.StatusBadRequest)
 		return
 	}
 
 	// call the proper handler for the header
 	switch endpoint_path {
-	case DESCRIBETABLEPATH	:
-		describe_table_route.RawPostHandler(w,req)
+	case DESCRIBETABLEPATH:
+		describe_table_route.RawPostHandler(w, req)
 		return
-	case LISTTABLESPATH	:
-		list_tables_route.RawPostHandler(w,req)
+	case LISTTABLESPATH:
+		list_tables_route.RawPostHandler(w, req)
 		return
-	case CREATETABLEPATH	:
-		create_table_route.RawPostHandler(w,req)
+	case CREATETABLEPATH:
+		create_table_route.RawPostHandler(w, req)
 		return
-	case UPDATETABLEPATH	:
-		update_table_route.RawPostHandler(w,req)
+	case UPDATETABLEPATH:
+		update_table_route.RawPostHandler(w, req)
 		return
-	case STATUSTABLEPATH	:
-		describe_table_route.StatusTableHandler(w,req)
+	case STATUSTABLEPATH:
+		describe_table_route.StatusTableHandler(w, req)
 		return
-	case PUTITEMPATH	:
-		put_item_route.RawPostHandler(w,req)
+	case PUTITEMPATH:
+		put_item_route.RawPostHandler(w, req)
 		return
-	case GETITEMPATH	:
-		get_item_route.RawPostHandler(w,req)
+	case GETITEMPATH:
+		get_item_route.RawPostHandler(w, req)
 		return
-	case BATCHGETITEMPATH	:
-		batch_get_item_route.BatchGetItemHandler(w,req)
+	case BATCHGETITEMPATH:
+		batch_get_item_route.BatchGetItemHandler(w, req)
 		return
-	case BATCHWRITEITEMPATH :
-		batch_write_item_route.BatchWriteItemHandler(w,req)
+	case BATCHWRITEITEMPATH:
+		batch_write_item_route.BatchWriteItemHandler(w, req)
 		return
-	case DELETEITEMPATH	:
-		delete_item_route.RawPostHandler(w,req)
+	case DELETEITEMPATH:
+		delete_item_route.RawPostHandler(w, req)
 		return
-	case UPDATEITEMPATH	:
-		update_item_route.RawPostHandler(w,req)
+	case UPDATEITEMPATH:
+		update_item_route.RawPostHandler(w, req)
 		return
-	case QUERYPATH		:
-		query_route.RawPostHandler(w,req)
+	case QUERYPATH:
+		query_route.RawPostHandler(w, req)
 		return
-	case SCANPATH		:
-		scan_route.RawPostHandler(w,req)
+	case SCANPATH:
+		scan_route.RawPostHandler(w, req)
 		return
 	default:
-		e := fmt.Sprintf("bbpd_route.CompatHandler:unknown endpoint '%s'",endpoint_path)
-		slog.SLog(syslog.LOG_ERR,e,true)
+		e := fmt.Sprintf("bbpd_route.CompatHandler:unknown endpoint '%s'", endpoint_path)
+		log.Printf(e)
 		http.Error(w, e, http.StatusBadRequest)
 		return
 	}
@@ -279,47 +283,47 @@ func CompatHandler(w http.ResponseWriter, req *http.Request) {
 // implied by the go docs.
 func StartBBPD(requestedPorts []int) error {
 	// try to get a port to listen to
-	for _,p := range requestedPorts {
-		e := fmt.Sprintf("trying to bind to port:%d",p)
-		slog.SLog(syslog.LOG_NOTICE,e,false)
+	for _, p := range requestedPorts {
+		e := fmt.Sprintf("trying to bind to port:%d", p)
+		log.Printf(e)
 		if canAssignPort(p) {
-			ListenPort = &p
+			port = &p
 			break
 		} else {
-			e := fmt.Sprintf("port %d already in use",p)
-			slog.SLog(syslog.LOG_NOTICE,e,false)
+			e := fmt.Sprintf("port %d already in use", p)
+			log.Printf(e)
 		}
 	}
-	if ListenPort == nil {
+	if port == nil {
 		return errors.New("bbpd_route.StartBBPD:no listen port")
 	}
-	e := fmt.Sprintf("init routing on %s:%d", bbpd_const.Host, *ListenPort)
-	slog.SLog(syslog.LOG_NOTICE,e,false)
-	http.HandleFunc(STATUSPATH,          statusHandler)
-	http.HandleFunc(DESCRIBETABLEPATH,   describe_table_route.RawPostHandler)
-	http.HandleFunc(DESCRIBETABLEGETPATH,describe_table_route.DescribeTableHandler)
-	http.HandleFunc(LISTTABLESPATH,      list_tables_route.ListTablesHandler)
-	http.HandleFunc(CREATETABLEPATH,     create_table_route.RawPostHandler)
-	http.HandleFunc(UPDATETABLEPATH,     update_table_route.RawPostHandler)
-	http.HandleFunc(STATUSTABLEPATH,     describe_table_route.StatusTableHandler)
-	http.HandleFunc(PUTITEMPATH,         put_item_route.RawPostHandler)
-	http.HandleFunc(GETITEMPATH,         get_item_route.RawPostHandler)
-	http.HandleFunc(BATCHGETITEMPATH,    batch_get_item_route.BatchGetItemHandler)
-	http.HandleFunc(BATCHWRITEITEMPATH,  batch_write_item_route.BatchWriteItemHandler)
-	http.HandleFunc(DELETEITEMPATH,      delete_item_route.RawPostHandler)
-	http.HandleFunc(UPDATEITEMPATH,      update_item_route.RawPostHandler)
-	http.HandleFunc(QUERYPATH,           query_route.RawPostHandler)
-	http.HandleFunc(SCANPATH,            scan_route.RawPostHandler)
-	http.HandleFunc(RAWPOSTPATH,         raw_post_route.RawPostHandler)
-	http.HandleFunc(COMPATPATH,          CompatHandler)
+	e := fmt.Sprintf("init routing on port %d", *port)
+	log.Printf(e)
+	http.HandleFunc(STATUSPATH, statusHandler)
+	http.HandleFunc(DESCRIBETABLEPATH, describe_table_route.RawPostHandler)
+	http.HandleFunc(DESCRIBETABLEGETPATH, describe_table_route.DescribeTableHandler)
+	http.HandleFunc(LISTTABLESPATH, list_tables_route.ListTablesHandler)
+	http.HandleFunc(CREATETABLEPATH, create_table_route.RawPostHandler)
+	http.HandleFunc(UPDATETABLEPATH, update_table_route.RawPostHandler)
+	http.HandleFunc(STATUSTABLEPATH, describe_table_route.StatusTableHandler)
+	http.HandleFunc(PUTITEMPATH, put_item_route.RawPostHandler)
+	http.HandleFunc(GETITEMPATH, get_item_route.RawPostHandler)
+	http.HandleFunc(BATCHGETITEMPATH, batch_get_item_route.BatchGetItemHandler)
+	http.HandleFunc(BATCHWRITEITEMPATH, batch_write_item_route.BatchWriteItemHandler)
+	http.HandleFunc(DELETEITEMPATH, delete_item_route.RawPostHandler)
+	http.HandleFunc(UPDATEITEMPATH, update_item_route.RawPostHandler)
+	http.HandleFunc(QUERYPATH, query_route.RawPostHandler)
+	http.HandleFunc(SCANPATH, scan_route.RawPostHandler)
+	http.HandleFunc(RAWPOSTPATH, raw_post_route.RawPostHandler)
+	http.HandleFunc(COMPATPATH, CompatHandler)
 
 	// undelete these to enable table deletions, a little dangerous!
 	// http.HandleFunc(DELETETABLEPATH,     delete_table_route.RawPostHandler)
 	// http.HandleFunc(DELETETABLEGETPATH,  delete_table_route.DeleteTableHandler)
 	srv = &http.Server{
-		Addr: ":"+strconv.Itoa(*ListenPort),
-		ReadTimeout: 30*time.Second,
-		WriteTimeout: 30*time.Second,
+		Addr:         ":" + strconv.Itoa(*port),
+		ReadTimeout:  30 * time.Second,
+		WriteTimeout: 30 * time.Second,
 	}
 	bbpd_runinfo.SetBBPDAccept()
 	return srv.ListenAndServe()

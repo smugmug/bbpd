@@ -1,5 +1,5 @@
 // Copyright (c) 2013,2014 SmugMug, Inc. All rights reserved.
-// 
+//
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions are
 // met:
@@ -9,7 +9,7 @@
 //       copyright notice, this list of conditions and the following
 //       disclaimer in the documentation and/or other materials provided
 //       with the distribution.
-// 
+//
 // THIS SOFTWARE IS PROVIDED BY SMUGMUG, INC. ``AS IS'' AND ANY
 // EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
 // IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
@@ -26,25 +26,24 @@
 package update_item_route
 
 import (
-	"net/http"
-	"fmt"
-	"log/syslog"
-	"strings"
-	"io"
-	"time"
-	"io/ioutil"
 	"encoding/json"
-	"github.com/smugmug/bbpd/lib/route_response"
+	"fmt"
 	"github.com/smugmug/bbpd/lib/bbpd_runinfo"
-	update_item "github.com/smugmug/godynamo/endpoints/update_item"
-	ep "github.com/smugmug/godynamo/endpoint"
 	raw "github.com/smugmug/bbpd/lib/raw_post_route"
-	"github.com/bradclawsie/slog"
+	"github.com/smugmug/bbpd/lib/route_response"
+	ep "github.com/smugmug/godynamo/endpoint"
+	update_item "github.com/smugmug/godynamo/endpoints/update_item"
+	"io"
+	"io/ioutil"
+	"log"
+	"net/http"
+	"strings"
+	"time"
 )
 
 // RawPostHandler relays the UpdateItem request to Dynamo directly.
 func RawPostHandler(w http.ResponseWriter, req *http.Request) {
-	raw.RawPostReq(w,req,update_item.UPDATEITEM_ENDPOINT)
+	raw.RawPostReq(w, req, update_item.UPDATEITEM_ENDPOINT)
 }
 
 // UpdateItemHandler relays the UpdateItem request to Dynamo but first validates it through a local type.
@@ -53,64 +52,64 @@ func UpdateItemHandler(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 	start := time.Now()
-	if (req.Method != "POST") {
+	if req.Method != "POST" {
 		e := "update_item_route.UpdateItemHandler:method only supports POST"
-		slog.SLog(syslog.LOG_ERR,e,false)
+		log.Printf(e)
 		http.Error(w, e, http.StatusBadRequest)
 		return
 	}
-	pathElts := strings.Split(req.URL.Path,"/")
+	pathElts := strings.Split(req.URL.Path, "/")
 	if len(pathElts) != 2 {
 		e := "update_item_route.UpdateItemHandler:cannot parse path. try /update-item"
-		slog.SLog(syslog.LOG_ERR,e,false)
+		log.Printf(e)
 		http.Error(w, e, http.StatusBadRequest)
 		return
 	}
 
 	bodybytes, read_err := ioutil.ReadAll(req.Body)
 	if read_err != nil && read_err != io.EOF {
-		e := fmt.Sprintf("update_item_route.UpdateItemHandler err reading req body: %s",read_err.Error())
-		slog.SLog(syslog.LOG_ERR,e,true)
+		e := fmt.Sprintf("update_item_route.UpdateItemHandler err reading req body: %s", read_err.Error())
+		log.Printf(e)
 		http.Error(w, e, http.StatusInternalServerError)
 		return
 	}
-        req.Body.Close()
+	req.Body.Close()
 	body := string(bodybytes)
 
 	var u update_item.Update
 	um_err := json.Unmarshal(bodybytes, &u)
 
 	if um_err != nil {
-		e := fmt.Sprintf("update_item_route.UpdateItemHandler unmarshal err on %s to Update: %s",body,um_err.Error())
-		slog.SLog(syslog.LOG_ERR,e,true)
+		e := fmt.Sprintf("update_item_route.UpdateItemHandler unmarshal err on %s to Update: %s", body, um_err.Error())
+		log.Printf(e)
 		http.Error(w, e, http.StatusInternalServerError)
 		return
 	}
 
-	resp_body,code,resp_err := u.EndpointReq()
+	resp_body, code, resp_err := u.EndpointReq()
 
 	if resp_err != nil {
 		e := fmt.Sprintf("update_item_route.UpdateItemHandler:err %s",
 			resp_err.Error())
-		slog.SLog(syslog.LOG_ERR,e,true)
-	 	http.Error(w, e, http.StatusInternalServerError)
-	 	return
+		log.Printf(e)
+		http.Error(w, e, http.StatusInternalServerError)
+		return
 	}
 
 	if ep.HttpErr(code) {
-		route_response.WriteError(w,code,"update_item_route.UpdateItemHandler",resp_body)
+		route_response.WriteError(w, code, "update_item_route.UpdateItemHandler", resp_body)
 		return
 	}
 
 	mr_err := route_response.MakeRouteResponse(
 		w,
 		req,
-	 	resp_body,
-	 	code,
-	 	start,
-	 	update_item.ENDPOINT_NAME)
+		resp_body,
+		code,
+		start,
+		update_item.ENDPOINT_NAME)
 	if mr_err != nil {
-	 	e := fmt.Sprintf("update_item_route.UpdateItemHandler %s",mr_err.Error())
-		slog.SLog(syslog.LOG_ERR,e,true)
+		e := fmt.Sprintf("update_item_route.UpdateItemHandler %s", mr_err.Error())
+		log.Printf(e)
 	}
 }
