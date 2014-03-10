@@ -91,10 +91,11 @@ solution but should be adequate until the standard library catches up.
 
 ### Debugging
 
-If you have opted to use `syslog` in your configuration file, you may look in the configured log file for error and
-warning messages. Otherwise these are available via `STDERR`.
+`bbpd` uses the standard log package to emit messages. If you wish to interrupt
+the daemon and obtain a `panic()` dump, use ctrl-c/SIGINT. Otherwise, a graceful
+shutdown can be executed by sending a SIGHUP to the process.
 
 ### Contact Us
 
-Please contact opensource@smugmug.com for information related to this package. 
+Please contact opensource@smugmug.com for information related to this package.
 Pull requests also welcome!
