@@ -33,6 +33,7 @@ import (
 	conf "github.com/smugmug/godynamo/conf"
 	conf_file "github.com/smugmug/godynamo/conf_file"
 	conf_iam "github.com/smugmug/godynamo/conf_iam"
+	keepalive "github.com/smugmug/godynamo/keepalive"
 	"log"
 	"os"
 	"os/signal"
@@ -80,17 +81,27 @@ func main() {
 		log.Printf("global conf.Vals initialized")
 	}
 
+	// launch a background poller to keep conns to aws alive
+	if conf.Vals.Network.DynamoDB.KeepAlive {
+		log.Printf("launching background keepalive")
+		go keepalive.KeepAlive([]string{conf.Vals.Network.DynamoDB.URL})
+	}
+
 	// the naive "fire and forget" IAM roles initializer and watcher.
-	iam_ready_chan := make(chan bool)
-	go conf_iam.GoIAM(iam_ready_chan)
-	iam_ready := <-iam_ready_chan
-	if !iam_ready {
-		log.Printf("IAM not enabled, using access/secret")
+	if conf.Vals.UseIAM {
+		iam_ready_chan := make(chan bool)
+		go conf_iam.GoIAM(iam_ready_chan)
+		iam_ready := <-iam_ready_chan
+		if !iam_ready {
+			panic("iam is not ready? auth problem")
+		}
+	} else {
+		log.Printf("not using iam, assume credentials hardcoded in conf file")
 	}
 
 	log.Printf("starting bbpd...")
 	pid := syscall.Getpid()
-	e := fmt.Sprintf("stop with ctrl-c or kill -[1,2,3,15] %v", pid)
+	e := fmt.Sprintf("induce panic with ctrl-c (kill -2 %v) or graceful termination with kill -[1,3,15] %v",pid,pid)
 	log.Printf(e)
 	ports := []int{bbpd_const.PORT, bbpd_const.PORT2}
 	log.Fatal(bbpd_route.StartBBPD(ports))
