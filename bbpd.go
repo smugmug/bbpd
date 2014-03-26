@@ -74,6 +74,7 @@ func main() {
 
 	// conf file must be read in before anything else, to initialize permissions etc
 	conf_file.Read()
+	conf.Vals.ConfLock.RLock()
 	if conf.Vals.Initialized == false {
 		panic("the conf.Vals global conf struct has not been initialized, " +
 			"invoke with conf_file.Read()")
@@ -98,6 +99,7 @@ func main() {
 	} else {
 		log.Printf("not using iam, assume credentials hardcoded in conf file")
 	}
+	conf.Vals.ConfLock.RUnlock()
 
 	log.Printf("starting bbpd...")
 	pid := syscall.Getpid()
