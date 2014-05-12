@@ -88,8 +88,13 @@ func main() {
 		go keepalive.KeepAlive([]string{conf.Vals.Network.DynamoDB.URL})
 	}
 
+	// we must give up the lock on the conf before calling GoIAM below, or it
+	// will not be able to mutate the auth params
+	using_iam := (conf.Vals.UseIAM == true)
+	conf.Vals.ConfLock.RUnlock()
+
 	// the naive "fire and forget" IAM roles initializer and watcher.
-	if conf.Vals.UseIAM {
+	if using_iam {
 		iam_ready_chan := make(chan bool)
 		go conf_iam.GoIAM(iam_ready_chan)
 		iam_ready := <-iam_ready_chan
@@ -99,7 +104,6 @@ func main() {
 	} else {
 		log.Printf("not using iam, assume credentials hardcoded in conf file")
 	}
-	conf.Vals.ConfLock.RUnlock()
 
 	log.Printf("starting bbpd...")
 	pid := syscall.Getpid()
