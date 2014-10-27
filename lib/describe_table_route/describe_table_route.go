@@ -1,27 +1,3 @@
-// Copyright (c) 2013,2014 SmugMug, Inc. All rights reserved.
-//
-// Redistribution and use in source and binary forms, with or without
-// modification, are permitted provided that the following conditions are
-// met:
-//     * Redistributions of source code must retain the above copyright
-//       notice, this list of conditions and the following disclaimer.
-//     * Redistributions in binary form must reproduce the above
-//       copyright notice, this list of conditions and the following
-//       disclaimer in the documentation and/or other materials provided
-//       with the distribution.
-//
-// THIS SOFTWARE IS PROVIDED BY SMUGMUG, INC. ``AS IS'' AND ANY
-// EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
-// IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
-// PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL SMUGMUG, INC. BE LIABLE FOR
-// ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
-// DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE
-// GOODS OR SERVICES;LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
-// INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER
-// IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR
-// OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF
-// ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-
 // Supports proxying the DescribeTable endpoint.
 package describe_table_route
 
@@ -114,7 +90,8 @@ func StatusTableHandler(w http.ResponseWriter, req *http.Request) {
 		http.Error(w, e, http.StatusInternalServerError)
 		return
 	}
-	duration := fmt.Sprintf("%v", time.Now().Sub(start))
+	end := time.Now()
+	duration := fmt.Sprintf("%v",end.Sub(start))
 	w.Header().Set(bbpd_const.CONTENTTYPE, bbpd_const.JSONMIME)
 	b, json_err := json.Marshal(bbpd_msg.Response{
 		Name:       desc.ENDPOINT_NAME,
@@ -122,8 +99,9 @@ func StatusTableHandler(w http.ResponseWriter, req *http.Request) {
 		Body:       string(sj),
 		Run: bbpd_msg.RunInfo{Method: req.Method,
 			Host:     bbpd_const.LOCALHOST,
+			Duration: duration,
 			Start:    start,
-			Duration: duration}})
+			End:      end}})
 	if json_err != nil {
 		e := fmt.Sprintf("describe_table_route.StatusTableHandler:desc marshal failure %s", json_err.Error())
 		log.Printf(e)
@@ -138,9 +116,7 @@ func DescribeTableHandler(w http.ResponseWriter, req *http.Request) {
 	if bbpd_runinfo.BBPDAbortIfClosed(w) {
 		return
 	}
-	if req.Method == "GET" {
-		describeTable_GET_Handler(w, req)
-	} else if req.Method == "POST" {
+	if req.Method == "POST" {
 		describeTable_POST_Handler(w, req)
 	} else {
 		e := fmt.Sprintf("describe_tables_route.DescribeTablesHandler:bad method %s", req.Method)
@@ -161,17 +137,17 @@ func describeTable_POST_Handler(w http.ResponseWriter, req *http.Request) {
 	}
 
 	bodybytes, read_err := ioutil.ReadAll(req.Body)
+	req.Body.Close()
 	if read_err != nil && read_err != io.EOF {
 		e := fmt.Sprintf("describe_table_route.describeTable_POST_Handler err reading req body: %s", read_err.Error())
 		log.Printf(e)
 		http.Error(w, e, http.StatusInternalServerError)
 		return
 	}
-	req.Body.Close()
+	
+	d := desc.NewDescribeTable()
 
-	var d desc.Describe
-
-	um_err := json.Unmarshal(bodybytes, &d)
+	um_err := json.Unmarshal(bodybytes, d)
 	if um_err != nil {
 		e := fmt.Sprintf("describe_table_route.describeTable_POST_Handler unmarshal err on %s to Get %s", string(bodybytes), um_err.Error())
 		log.Printf(e)
@@ -179,8 +155,7 @@ func describeTable_POST_Handler(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	d_ep := ep.Endpoint(d)
-	resp_body, code, resp_err := d_ep.EndpointReq()
+	resp_body, code, resp_err := d.EndpointReq()
 
 	if resp_err != nil {
 		e := fmt.Sprintf("describe_table_route.describeTable_POST_Handler:err %s",
@@ -208,52 +183,5 @@ func describeTable_POST_Handler(w http.ResponseWriter, req *http.Request) {
 		log.Printf(e)
 		http.Error(w, e, http.StatusInternalServerError)
 		return
-	}
-}
-
-// Executes DescribeTable assuming it were requested with the GET method.
-func describeTable_GET_Handler(w http.ResponseWriter, req *http.Request) {
-	start := time.Now()
-	pathElts := strings.Split(req.URL.Path, "/")
-	if len(pathElts) != 3 {
-		e := "describe_table_route.describeTable_GET_Handler:cannot parse path. try /desc-table/TABLENAME"
-		log.Printf(e)
-		http.Error(w, e, http.StatusBadRequest)
-		return
-	}
-	ue_tn, ue_err := url.QueryUnescape(string(pathElts[2]))
-	if ue_err != nil {
-		e := fmt.Sprintf("describe_table_route.descHandler:cannot unescape %s, %s", string(pathElts[2]), ue_err.Error())
-		log.Printf(e)
-		http.Error(w, e, http.StatusInternalServerError)
-		return
-	}
-
-	d := ep.Endpoint(desc.Describe{TableName: ue_tn})
-	resp_body, code, resp_err := d.EndpointReq()
-
-	if resp_err != nil {
-		e := fmt.Sprintf("describe_table_route.describeTable_GET_Handler:err %s",
-			resp_err.Error())
-		log.Printf(e)
-		http.Error(w, e, http.StatusInternalServerError)
-		return
-	}
-
-	if ep.HttpErr(code) {
-		route_response.WriteError(w, code, "describe_table_route.describeTable_GET_Handler", resp_body)
-		return
-	}
-
-	mr_err := route_response.MakeRouteResponse(
-		w,
-		req,
-		resp_body,
-		code,
-		start,
-		desc.ENDPOINT_NAME)
-	if mr_err != nil {
-		e := fmt.Sprintf("describe_table_route.describeTable_GET_Handler %s", mr_err.Error())
-		log.Printf(e)
 	}
 }

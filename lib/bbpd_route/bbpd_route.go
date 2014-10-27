@@ -1,33 +1,8 @@
-// Copyright (c) 2013,2014 SmugMug, Inc. All rights reserved.
-//
-// Redistribution and use in source and binary forms, with or without
-// modification, are permitted provided that the following conditions are
-// met:
-//     * Redistributions of source code must retain the above copyright
-//       notice, this list of conditions and the following disclaimer.
-//     * Redistributions in binary form must reproduce the above
-//       copyright notice, this list of conditions and the following
-//       disclaimer in the documentation and/or other materials provided
-//       with the distribution.
-//
-// THIS SOFTWARE IS PROVIDED BY SMUGMUG, INC. ``AS IS'' AND ANY
-// EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
-// IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
-// PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL SMUGMUG, INC. BE LIABLE FOR
-// ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
-// DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE
-// GOODS OR SERVICES;LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
-// INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER
-// IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR
-// OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF
-// ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-
 // The core configuration of the http proxy.
 package bbpd_route
 
 import (
 	"encoding/json"
-	"errors"
 	"fmt"
 	"github.com/smugmug/bbpd/lib/batch_get_item_route"
 	"github.com/smugmug/bbpd/lib/batch_write_item_route"
@@ -295,7 +270,12 @@ func StartBBPD(requestedPorts []int) error {
 		}
 	}
 	if port == nil {
-		return errors.New("bbpd_route.StartBBPD:no listen port")
+		// if all ports are in use, we may assume that other bbpd invocations are
+		// running correctly. in which case, return nil here and the caller will
+		// exit with code 0, which is important to prevent rc managers etc from
+		// automatically respawning the program
+		log.Printf("bbpd_route.StartBBPD:no listen port")
+		return nil
 	}
 	e := fmt.Sprintf("init routing on port %d", *port)
 	log.Printf(e)
@@ -320,11 +300,26 @@ func StartBBPD(requestedPorts []int) error {
 	// undelete these to enable table deletions, a little dangerous!
 	// http.HandleFunc(DELETETABLEPATH,     delete_table_route.RawPostHandler)
 	// http.HandleFunc(DELETETABLEGETPATH,  delete_table_route.DeleteTableHandler)
+
+
+	const SERV_TIMEOUT = 20
 	srv = &http.Server{
 		Addr:         ":" + strconv.Itoa(*port),
-		ReadTimeout:  30 * time.Second,
-		WriteTimeout: 30 * time.Second,
+		// The timeouts seems too-long, but they accomodates the exponential decay retry loop.
+		// Programs using this can either change these directly or use goroutine timeouts
+		// to impose a local minimum.
+		ReadTimeout:  SERV_TIMEOUT * time.Second,
+		WriteTimeout: SERV_TIMEOUT * time.Second,
+		ConnState:
+		func(conn net.Conn, new_state http.ConnState) {
+			bbpd_runinfo.RecordConnState(new_state)
+			return
+		},
 	}
 	bbpd_runinfo.SetBBPDAccept()
 	return srv.ListenAndServe()
+}
+
+func StopBBPD() error {
+	return bbpd_runinfo.StopBBPD()
 }
