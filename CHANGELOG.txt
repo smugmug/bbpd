@@ -1,0 +1,7 @@
+October 27, 2014
+----------------
+
+- Bring bbpd into conformance with DynamoDB changes made by AWS in October 2014.
+
+- Support graceful shutdown.
+
