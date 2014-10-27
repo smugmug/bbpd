@@ -80,15 +80,6 @@ The "/" route is reserved for these "compatibility mode" endpoint.
 
 Other endpoints are accessed similarly. See the AWS documentation for specific request structure.
 
-### Caveats
-
-This proxy uses the standard `net/http` server. As of Go v1.2 (rc), this server does not support *graceful*
-restarts. We are aware of alternative solutions but haven't introduced them to this codebase, hoping
-that this feature will shortly be introduced into the standard library. The proxy does have a signal
-handler to accept various termination signals, upon which the proxy will stop accepting new
-connections and go into a short sleep to allow existing connections to terminate. This isn't an optimal
-solution but should be adequate until the standard library catches up.
-
 ### Debugging
 
 `bbpd` uses the standard log package to emit messages. If you wish to interrupt
