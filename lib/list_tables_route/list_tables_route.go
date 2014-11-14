@@ -143,7 +143,7 @@ func listTables_GET_Handler(w http.ResponseWriter, req *http.Request) {
 	}
 
 	l := list.List{
-		Limit: limit, 
+		Limit: limit,
 		ExclusiveStartTableName: estn}
 
 	resp_body, code, resp_err := l.EndpointReq()

@@ -27,7 +27,7 @@ func sigHandle(c <-chan os.Signal) {
 			log.Printf("*** caught signal %v, stop\n", sig)
 			stop_err := bbpd_route.StopBBPD()
 			if stop_err != nil {
-				log.Printf("graceful shutdown not possible:%s",stop_err.Error())
+				log.Printf("graceful shutdown not possible:%s", stop_err.Error())
 			}
 			log.Printf("bbpd exit\n")
 			os.Exit(0)
@@ -80,17 +80,17 @@ func main() {
 
 	log.Printf("starting bbpd...")
 	pid := syscall.Getpid()
-	e := fmt.Sprintf("induce panic with ctrl-c (kill -2 %v) or graceful termination with kill -[1,3,15] %v",pid,pid)
+	e := fmt.Sprintf("induce panic with ctrl-c (kill -2 %v) or graceful termination with kill -[1,3,15] %v", pid, pid)
 	log.Printf(e)
 	ports := []int{bbpd_const.PORT, bbpd_const.PORT2}
 	start_bbpd_err := bbpd_route.StartBBPD(ports)
 	if start_bbpd_err == nil {
-		// all ports are in use. exit with 0 so our rc system does not 
+		// all ports are in use. exit with 0 so our rc system does not
 		// respawn the program
 		log.Printf("all bbpd ports appear to be in use: exit with code 0")
 		os.Exit(0)
 	} else {
-		// abnormal exit - allow the rc system to try to respawn by returning 
+		// abnormal exit - allow the rc system to try to respawn by returning
 		// exit code 1
 		log.Printf("bbpd invocation error")
 		log.Fatal(start_bbpd_err.Error())

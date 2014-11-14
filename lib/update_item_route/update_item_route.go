@@ -50,7 +50,7 @@ func UpdateItemHandler(w http.ResponseWriter, req *http.Request) {
 		http.Error(w, e, http.StatusInternalServerError)
 		return
 	}
-	
+
 	u := update_item.NewUpdateItem()
 	um_err := json.Unmarshal(bodybytes, u)
 

@@ -87,3 +87,101 @@ func BatchGetItemHandler(w http.ResponseWriter, req *http.Request) {
 		log.Printf(e)
 	}
 }
+
+func BatchGetItemJSONHandler(w http.ResponseWriter, req *http.Request) {
+	if bbpd_runinfo.BBPDAbortIfClosed(w) {
+		return
+	}
+	start := time.Now()
+	if req.Method != "POST" {
+		e := "batch_get_item_route.BatchGetItemJSONHandler:method only supports POST"
+		log.Printf(e)
+		http.Error(w, e, http.StatusBadRequest)
+		return
+	}
+	pathElts := strings.Split(req.URL.Path, "/")
+	if len(pathElts) != 2 {
+		e := "batch_get_item_route.BatchGetItemJSONHandler:cannot parse path. try /batch-get-item"
+		log.Printf(e)
+		http.Error(w, e, http.StatusBadRequest)
+		return
+	}
+
+	bodybytes, read_err := ioutil.ReadAll(req.Body)
+	if read_err != nil && read_err != io.EOF {
+		e := fmt.Sprintf("batch_get_item_route.BatchGetItemJSONHandler err reading req body: %s", read_err.Error())
+		log.Printf(e)
+		http.Error(w, e, http.StatusInternalServerError)
+		return
+	}
+	req.Body.Close()
+
+	var b bgi.BatchGetItem
+
+	um_err := json.Unmarshal(bodybytes, &b)
+	if um_err != nil {
+		e := fmt.Sprintf("batch_get_item_route.BatchGetItemJSONHandler unmarshal err on %s to BatchGetItem %s", string(bodybytes), um_err.Error())
+		log.Printf(e)
+		http.Error(w, e, http.StatusInternalServerError)
+		return
+	}
+
+	if len(bodybytes) > bgi.QUERY_LIM_BYTES {
+		e := fmt.Sprintf("batch_get_item_route.BatchGetItemJSONHandler - payload over 1024kb, may be rejected by aws! splitting into segmented requests will likely mean each segment is accepted")
+		log.Printf(e)
+	}
+
+	resp_body, code, resp_err := b.DoBatchGet()
+
+	if resp_err != nil {
+		e := fmt.Sprintf("batch_get_item_route.BatchGetItemJSONHandler:err %s",
+			resp_err.Error())
+		log.Printf(e)
+		http.Error(w, e, http.StatusInternalServerError)
+		return
+	}
+
+	if ep.HttpErr(code) {
+		route_response.WriteError(w, code, "batch_get_item_route.BatchGetItemJSONHandler", resp_body)
+		return
+	}
+
+	// translate the Response to a ResponseItemsJSON
+	resp := bgi.NewResponse()
+	um_err = json.Unmarshal([]byte(resp_body), resp)
+	if um_err != nil {
+		e := fmt.Sprintf("batch_get_item_route.BatchGetItemJSONHandler:err %s",
+			um_err.Error())
+		log.Printf(e)
+		http.Error(w, e, http.StatusInternalServerError)
+		return
+	}
+	resp_json, rerr := resp.ToResponseItemsJSON()
+	if rerr != nil {
+		e := fmt.Sprintf("batch_get_item_route.BatchGetItemJSONHandler:err %s",
+			rerr.Error())
+		log.Printf(e)
+		http.Error(w, e, http.StatusInternalServerError)
+		return
+	}
+	json_body, jerr := json.Marshal(resp_json)
+	if jerr != nil {
+		e := fmt.Sprintf("batch_get_item_route.BatchGetItemJSONHandler:err %s",
+			jerr.Error())
+		log.Printf(e)
+		http.Error(w, e, http.StatusInternalServerError)
+		return
+	}
+
+	mr_err := route_response.MakeRouteResponse(
+		w,
+		req,
+		string(json_body),
+		http.StatusOK,
+		start,
+		bgi.ENDPOINT_NAME)
+	if mr_err != nil {
+		e := fmt.Sprintf("batch_get_item_route.BatchGetItemJSONHandler %s", mr_err.Error())
+		log.Printf(e)
+	}
+}

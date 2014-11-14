@@ -31,7 +31,7 @@ func WriteError(w http.ResponseWriter, code int, origin, resp_body string) {
 // MakeRouteResponse wraps a dynamo response with some debugging information related to http codes and request duration.
 func MakeRouteResponse(w http.ResponseWriter, req *http.Request, resp_body string, code int, start time.Time, endpoint_name string) error {
 	end := time.Now()
-	duration := fmt.Sprintf("%v",end.Sub(start))
+	duration := fmt.Sprintf("%v", end.Sub(start))
 	if resp_body != "" && code == http.StatusOK {
 		var b []byte
 		var json_err error

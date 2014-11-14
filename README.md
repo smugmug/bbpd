@@ -12,8 +12,10 @@ To install *bbpd*, run the following command:
 
         go get github.com/smugmug/bbpd
 
-*bbpd* is written in Go, and requires a Go 1.1 or higher toolchain to be installed on your system.
+*bbpd* is written in Go, and requires a Go 1.1 or higher toolchain to be installed on your system
+if you want to build it. If you just want to run it, then use apt-get as described above.
 
+If you want to hack on bbpd, you will need a Go environment.
 To understand how to use Go code in your environment, please see:
 
         http://golang.org/doc/install
@@ -39,14 +41,9 @@ executable to an alternate location.
 This package also includes some convenience scripts for managing `bbpd` as a daemon which
 you may wish to use or alter.
 
-In the `bin/bbpd` directory you will find `bbpd.conf` which can be used to start and stop `bbpd`
-on Ubuntu systems via `upstart`. Please see Ubuntu documentation for details.
-
-Also in the `bin/bbpd` directory are two shell scripts: `bbpd_daemon` and `bbpd_ctl`. Call
+In the `bin/bbpd` directory are two shell scripts: `bbpd_daemon` and `bbpd_ctl`. Call
 `bbpd_ctl` with arguments `start` `stop` or `status`. These scripts assume `bbpd` has been copied into
-`/usr/bin`.
-
-`bbpd` is configured to use ports 12333 and 12334 in that order.
+`/usr/bin`. These are useful if you want to avoid upstart (they are like old apachectl etc).
 
 ### Use
 
@@ -80,13 +77,68 @@ The "/" route is reserved for these "compatibility mode" endpoint.
 
 Other endpoints are accessed similarly. See the AWS documentation for specific request structure.
 
-### Debugging
+### JSON Documents
 
-`bbpd` uses the standard log package to emit messages. If you wish to interrupt
-the daemon and obtain a `panic()` dump, use ctrl-c/SIGINT. Otherwise, a graceful
-shutdown can be executed by sending a SIGHUP to the process.
+Amazon has been augmenting their SDKs with wrappers that allow the caller to coerce
+their Items (both when writing and reading) to what I will refer to as "basic JSON".
 
-### Contact Us
+Basic JSON is stripped of the type signifiers ('S','NS', etc) that AWS specifies in their
+`AttributeValue` specification (http://docs.aws.amazon.com/amazondynamodb/latest/APIReference/API_AttributeValue.html).
 
-Please contact opensource@smugmug.com for information related to this package.
-Pull requests also welcome!
+For example, the `AttributeValue`
+
+        {"AString":{"S":"this is a string"}}
+
+is translated to this basic JSON:
+
+        {"AString":"this is a string"}
+
+Here are some other examples:
+
+`AttrbiuteValue`:
+
+        {"AStringSet":{"SS":["a","b","c"]}}
+        {"ANumber":{"N":"4"}}
+        {"AList":[{"N":"4"},{"SS":["a","b","c"]}]}
+
+are translated to these basic JSON values:
+
+        {"AStringSet":["a","b","c"]}
+        {"ANumber":4}
+        {"AList":[4,["a","b","c"]]}
+
+`bbpd` now includes support for passing in basic JSON documents in place of Items in the
+following endpoints:
+
+- GetItemJSON
+- PutItemJSON
+- BatchGetItemJSON
+- BatchWriteItemJSON
+
+These are not AWS endpoints so they must be called explicitly (there are no `X-Amz-Target`
+designations for these, you cannot simply POST your input to the default toplevel route).
+
+They are called as
+
+        http://localhost:$PORT/GetItemJSON
+        http://localhost:$PORT/GetItemJSON
+        http://localhost:$PORT/BatchGetItemJSON
+        http://localhost:$PORT/BatchWriteItemJSON
+
+Note that AWS itself does not support basic JSON - the support is always delivered by a
+coercion of basic JSON to and from `AttrbiuteValue`. This coercion is lossy! For example,
+a `B` or `BS` will be coerced to a string type (`S`, `SS`) and `NULL` types will be
+coerced to `BOOL`. Use with caution.
+
+This feature is only enabled for `Item` types, not for `Key` or other `AttributeValue`
+aliases. So for example, `BatchWriteItemJSON` requests of type `DeleteRequest` cannot use
+basic JSON, only `PutRequest`.
+
+Here is a quick illustration that shows the same PutItem request using both AttributeValues
+and basic JSON:
+
+        curl -H "X-Amz-Target: DynamoDB_20120810.PutItem" -X POST -d '{"TableName":"test-godynamo-livetest","Item":{"TheHashKey":{"S":"a-hash-key"},"TheRangeKey":{"N":"1"},"num":{"N":"1"},"numlist":{"NS":["1","2","3","-7234234234.234234"]},"stringlist":{"SS":["pk1_a","pk1_b","pk1_c"]}}}' http://localhost:12333/;
+
+        curl -X POST -d '{"TableName":"test-godynamo-livetest","Item":{"TheHashKey":"a-hash-key","TheRangeKey":1,"num":1,"numlist":[1,2,3,9,-7234234234.234234],"stringlist":["pk1_a","pk1_b","pk1_c"]}}' http://localhost:12333/PutItemJSON;
+
+See the `tests` directory for more examples.

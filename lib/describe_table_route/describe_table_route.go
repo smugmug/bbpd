@@ -91,7 +91,7 @@ func StatusTableHandler(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 	end := time.Now()
-	duration := fmt.Sprintf("%v",end.Sub(start))
+	duration := fmt.Sprintf("%v", end.Sub(start))
 	w.Header().Set(bbpd_const.CONTENTTYPE, bbpd_const.JSONMIME)
 	b, json_err := json.Marshal(bbpd_msg.Response{
 		Name:       desc.ENDPOINT_NAME,
@@ -144,7 +144,7 @@ func describeTable_POST_Handler(w http.ResponseWriter, req *http.Request) {
 		http.Error(w, e, http.StatusInternalServerError)
 		return
 	}
-	
+
 	d := desc.NewDescribeTable()
 
 	um_err := json.Unmarshal(bodybytes, d)

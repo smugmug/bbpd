@@ -1,0 +1,3 @@
+curl -H "X-Amz-Target: DynamoDB_20120810.PutItem" -X POST -d '{"TableName":"test-godynamo-livetest","Item":{"TheHashKey":{"S":"a-hash-key"},"TheRangeKey":{"N":"1"},"byte":{"B":"aGVsbG8="},"bytelist":{"BS":["aGVsbG8=","dGhlcmU="]},"num":{"N":"1"},"numlist":{"NS":["1","2","3","-7234234234.234234"]},"stringlist":{"SS":["pk1_a","pk1_b","pk1_c"]}},"ReturnValues":"NONE"}' http://localhost:12333/;
+# PutItemJSON is not a compatible aws endpoint, so it cannot go through /
+curl -X POST -d '{"TableName":"test-godynamo-livetest","Item":{"TheHashKey":"a-hash-key-json1","TheRangeKey":1,"num":1,"numlist":[7,7,1,2,3,9,-7234234234.234234],"stringlist":["pk1_a","pk1_b","pk1_c"]}}' http://localhost:12333/PutItemJSON;

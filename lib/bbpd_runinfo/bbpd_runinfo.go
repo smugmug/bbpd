@@ -2,18 +2,18 @@
 package bbpd_runinfo
 
 import (
+	"errors"
 	"fmt"
 	"log"
+	"net/http"
 	"sync"
 	"time"
-	"errors"
-	"net/http"
 )
 
 var (
 	accepting  bool
 	accept_mut *sync.RWMutex
-	conns_wg *sync.WaitGroup 
+	conns_wg   *sync.WaitGroup
 )
 
 func init() {
@@ -34,16 +34,16 @@ func StopBBPD() error {
 	accept_mut.Lock()
 	accepting = false
 	accept_mut.Unlock()
-	wait_chan := make(chan bool,1)
+	wait_chan := make(chan bool, 1)
 	go func() {
 		conns_wg.Wait()
 		wait_chan <- true
 	}()
 	select {
-	case <- wait_chan:
+	case <-wait_chan:
 		log.Printf("conns completed, graceful exit possible")
 		return nil
-	case <- time.After(500 * time.Millisecond):
+	case <-time.After(500 * time.Millisecond):
 		return errors.New("shutdown timed out")
 	}
 	return nil

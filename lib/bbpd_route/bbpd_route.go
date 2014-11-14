@@ -46,26 +46,30 @@ import (
 )
 
 const (
-	STATUSPATH           = "/Status"
-	STATUSTABLEPATH      = "/StatusTable/"
-	RAWPOSTPATH          = "/RawPost/"
-	DESCRIBETABLEPATH    = "/" + desc.ENDPOINT_NAME
-	DESCRIBETABLEGETPATH = "/" + desc.ENDPOINT_NAME + "/"
-	DELETETABLEPATH      = "/" + delete_table.ENDPOINT_NAME
-	DELETETABLEGETPATH   = "/" + delete_table.ENDPOINT_NAME + "/"
-	LISTTABLESPATH       = "/" + list.ENDPOINT_NAME
-	CREATETABLEPATH      = "/" + create.ENDPOINT_NAME
-	UPDATETABLEPATH      = "/" + update_table.ENDPOINT_NAME
-	PUTITEMPATH          = "/" + put.ENDPOINT_NAME
-	GETITEMPATH          = "/" + get.ENDPOINT_NAME
-	BATCHGETITEMPATH     = "/" + bgi.ENDPOINT_NAME
-	BATCHWRITEITEMPATH   = "/" + bwi.ENDPOINT_NAME
-	DELETEITEMPATH       = "/" + delete_item.ENDPOINT_NAME
-	UPDATEITEMPATH       = "/" + update_item.ENDPOINT_NAME
-	QUERYPATH            = "/" + query.ENDPOINT_NAME
-	SCANPATH             = "/" + scan.ENDPOINT_NAME
-
-	COMPATPATH = "/"
+	URI_PATH_SEP           = "/"
+	STATUSPATH             = URI_PATH_SEP + "Status"
+	STATUSTABLEPATH        = URI_PATH_SEP + "StatusTable" + URI_PATH_SEP
+	RAWPOSTPATH            = URI_PATH_SEP + "RawPost" + URI_PATH_SEP
+	DESCRIBETABLEPATH      = URI_PATH_SEP + desc.ENDPOINT_NAME
+	DESCRIBETABLEGETPATH   = URI_PATH_SEP + desc.ENDPOINT_NAME + URI_PATH_SEP
+	DELETETABLEPATH        = URI_PATH_SEP + delete_table.ENDPOINT_NAME
+	DELETETABLEGETPATH     = URI_PATH_SEP + delete_table.ENDPOINT_NAME + URI_PATH_SEP
+	LISTTABLESPATH         = URI_PATH_SEP + list.ENDPOINT_NAME
+	CREATETABLEPATH        = URI_PATH_SEP + create.ENDPOINT_NAME
+	UPDATETABLEPATH        = URI_PATH_SEP + update_table.ENDPOINT_NAME
+	PUTITEMPATH            = URI_PATH_SEP + put.ENDPOINT_NAME
+	PUTITEMJSONPATH        = URI_PATH_SEP + put.JSON_ENDPOINT_NAME
+	GETITEMPATH            = URI_PATH_SEP + get.ENDPOINT_NAME
+	GETITEMJSONPATH        = URI_PATH_SEP + get.JSON_ENDPOINT_NAME
+	BATCHGETITEMPATH       = URI_PATH_SEP + bgi.ENDPOINT_NAME
+	BATCHGETITEMJSONPATH   = URI_PATH_SEP + bgi.JSON_ENDPOINT_NAME
+	BATCHWRITEITEMPATH     = URI_PATH_SEP + bwi.ENDPOINT_NAME
+	BATCHWRITEITEMJSONPATH = URI_PATH_SEP + bwi.JSON_ENDPOINT_NAME
+	DELETEITEMPATH         = URI_PATH_SEP + delete_item.ENDPOINT_NAME
+	UPDATEITEMPATH         = URI_PATH_SEP + update_item.ENDPOINT_NAME
+	QUERYPATH              = URI_PATH_SEP + query.ENDPOINT_NAME
+	SCANPATH               = URI_PATH_SEP + scan.ENDPOINT_NAME
+	COMPATPATH             = URI_PATH_SEP
 )
 
 var (
@@ -96,9 +100,13 @@ func init() {
 		UPDATETABLEPATH,
 		STATUSTABLEPATH,
 		PUTITEMPATH,
+		PUTITEMJSONPATH,
 		GETITEMPATH,
+		GETITEMJSONPATH,
 		BATCHGETITEMPATH,
+		BATCHGETITEMJSONPATH,
 		BATCHWRITEITEMPATH,
+		BATCHWRITEITEMJSONPATH,
 		UPDATEITEMPATH,
 		QUERYPATH,
 		SCANPATH,
@@ -287,9 +295,13 @@ func StartBBPD(requestedPorts []int) error {
 	http.HandleFunc(UPDATETABLEPATH, update_table_route.RawPostHandler)
 	http.HandleFunc(STATUSTABLEPATH, describe_table_route.StatusTableHandler)
 	http.HandleFunc(PUTITEMPATH, put_item_route.RawPostHandler)
+	http.HandleFunc(PUTITEMJSONPATH, put_item_route.PutItemJSONHandler)
 	http.HandleFunc(GETITEMPATH, get_item_route.RawPostHandler)
+	http.HandleFunc(GETITEMJSONPATH, get_item_route.GetItemJSONHandler)
 	http.HandleFunc(BATCHGETITEMPATH, batch_get_item_route.BatchGetItemHandler)
+	http.HandleFunc(BATCHGETITEMJSONPATH, batch_get_item_route.BatchGetItemJSONHandler)
 	http.HandleFunc(BATCHWRITEITEMPATH, batch_write_item_route.BatchWriteItemHandler)
+	http.HandleFunc(BATCHWRITEITEMJSONPATH, batch_write_item_route.BatchWriteItemJSONHandler)
 	http.HandleFunc(DELETEITEMPATH, delete_item_route.RawPostHandler)
 	http.HandleFunc(UPDATEITEMPATH, update_item_route.RawPostHandler)
 	http.HandleFunc(QUERYPATH, query_route.RawPostHandler)
@@ -301,17 +313,15 @@ func StartBBPD(requestedPorts []int) error {
 	// http.HandleFunc(DELETETABLEPATH,     delete_table_route.RawPostHandler)
 	// http.HandleFunc(DELETETABLEGETPATH,  delete_table_route.DeleteTableHandler)
 
-
 	const SERV_TIMEOUT = 20
 	srv = &http.Server{
-		Addr:         ":" + strconv.Itoa(*port),
+		Addr: ":" + strconv.Itoa(*port),
 		// The timeouts seems too-long, but they accomodates the exponential decay retry loop.
 		// Programs using this can either change these directly or use goroutine timeouts
 		// to impose a local minimum.
 		ReadTimeout:  SERV_TIMEOUT * time.Second,
 		WriteTimeout: SERV_TIMEOUT * time.Second,
-		ConnState:
-		func(conn net.Conn, new_state http.ConnState) {
+		ConnState: func(conn net.Conn, new_state http.ConnState) {
 			bbpd_runinfo.RecordConnState(new_state)
 			return
 		},

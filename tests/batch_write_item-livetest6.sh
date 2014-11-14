@@ -1,0 +1,1 @@
+curl -X POST -d '{"RequestItems":{"test-godynamo-livetest":[{"PutRequest":{"Item":{"SomeValue":1,"TheHashKey":"AHashKeyJSONBatch1","TheRangeKey":3}}},{"PutRequest":{"Item":{"SomeValue":2,"TheHashKey":"AHashKeyJSONBatch2","TheRangeKey":4}}}]},"ReturnConsumedCapacity":"NONE","ReturnItemCollectionMetrics":"NONE"}' http://localhost:12333/BatchWriteItemJSON
