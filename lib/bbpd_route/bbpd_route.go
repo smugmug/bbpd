@@ -154,7 +154,7 @@ func statusHandler(w http.ResponseWriter, req *http.Request) {
 	mr_err := route_response.MakeRouteResponse(
 		w,
 		req,
-		string(sj),
+		sj,
 		http.StatusOK,
 		time.Now(),
 		"Status")

@@ -16,9 +16,9 @@ import (
 )
 
 // WriteError is a convenience wrapper for emitting an error.
-func WriteError(w http.ResponseWriter, code int, origin, resp_body string) {
+func WriteError(w http.ResponseWriter, code int, origin string, resp_body []byte) {
 	if ep.ReqErr(code) { // 4xx err
-		e := fmt.Sprintf("%s:(%d) %s", origin, code, resp_body)
+		e := fmt.Sprintf("%s:(%d) %s", origin, code, string(resp_body))
 		log.Printf(e)
 		http.Error(w, e, http.StatusBadRequest)
 	} else { // 5xx err
@@ -29,15 +29,15 @@ func WriteError(w http.ResponseWriter, code int, origin, resp_body string) {
 }
 
 // MakeRouteResponse wraps a dynamo response with some debugging information related to http codes and request duration.
-func MakeRouteResponse(w http.ResponseWriter, req *http.Request, resp_body string, code int, start time.Time, endpoint_name string) error {
+func MakeRouteResponse(w http.ResponseWriter, req *http.Request, resp_body []byte, code int, start time.Time, endpoint_name string) error {
 	end := time.Now()
 	duration := fmt.Sprintf("%v", end.Sub(start))
-	if resp_body != "" && code == http.StatusOK {
+	if resp_body != nil && code == http.StatusOK {
 		var b []byte
 		var json_err error
 		w.Header().Set(bbpd_const.CONTENTTYPE, bbpd_const.JSONMIME)
 		if _, compact := req.URL.Query()[bbpd_const.COMPACT]; compact {
-			b = []byte(resp_body)
+			b = resp_body
 		} else {
 			b, json_err = json.Marshal(bbpd_msg.Response{
 				Name:       endpoint_name,
@@ -86,8 +86,8 @@ func MakeRouteResponse(w http.ResponseWriter, req *http.Request, resp_body strin
 		return nil
 	} else {
 		s := ""
-		if resp_body != "" {
-			s = resp_body
+		if resp_body != nil {
+			s = string(resp_body)
 		}
 		e := fmt.Sprintf("route_response.MakeRouteResponse %s", s)
 		log.Printf(e)

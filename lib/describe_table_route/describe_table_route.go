@@ -96,7 +96,7 @@ func StatusTableHandler(w http.ResponseWriter, req *http.Request) {
 	b, json_err := json.Marshal(bbpd_msg.Response{
 		Name:       desc.ENDPOINT_NAME,
 		StatusCode: http.StatusOK,
-		Body:       string(sj),
+		Body:       sj,
 		Run: bbpd_msg.RunInfo{Method: req.Method,
 			Host:     bbpd_const.LOCALHOST,
 			Duration: duration,

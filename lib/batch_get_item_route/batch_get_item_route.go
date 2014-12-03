@@ -176,7 +176,7 @@ func BatchGetItemJSONHandler(w http.ResponseWriter, req *http.Request) {
 	mr_err := route_response.MakeRouteResponse(
 		w,
 		req,
-		string(json_body),
+		json_body,
 		http.StatusOK,
 		start,
 		bgi.ENDPOINT_NAME)
