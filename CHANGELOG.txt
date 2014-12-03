@@ -1,3 +1,9 @@
+December 3, 2014
+----------------
+
+- Deploy support for some type changes in GoDynamo.
+
+
 October 27, 2014
 ----------------
 
