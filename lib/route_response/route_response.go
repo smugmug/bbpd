@@ -36,7 +36,14 @@ func MakeRouteResponse(w http.ResponseWriter, req *http.Request, resp_body []byt
 		var b []byte
 		var json_err error
 		w.Header().Set(bbpd_const.CONTENTTYPE, bbpd_const.JSONMIME)
-		if _, compact := req.URL.Query()[bbpd_const.COMPACT]; compact {
+
+		// look for the X-BBPD-Verbose and X-BBPD-Indent headers
+		verbose_output := false // should output include timing info?
+		indent_output := false  // should output be indented/pretty-printed?
+		_, verbose_output = req.Header[bbpd_const.X_BBPD_VERBOSE]
+		_, indent_output = req.Header[bbpd_const.X_BBPD_INDENT]
+
+		if !verbose_output {
 			b = resp_body
 		} else {
 			b, json_err = json.Marshal(bbpd_msg.Response{
@@ -59,7 +66,7 @@ func MakeRouteResponse(w http.ResponseWriter, req *http.Request, resp_body []byt
 
 		// we support pretty-printing (indent)
 		// just pass indent=1 (the 1 can be anything) in the url
-		if _, indent := req.URL.Query()[bbpd_const.INDENT]; indent {
+		if indent_output {
 			var buf bytes.Buffer
 			if i_err := json.Indent(&buf, b, "", "\t"); i_err != nil {
 				// could not pretty print!

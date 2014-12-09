@@ -53,17 +53,16 @@ First make sure that bbpd is running:
 
         curl "http://localhost:12333/Status"
 
-You should see some output. To make this more readable, add the `compact` and `indent` options:
+You should see some output. To make this more readable, add the `Verbose` and `Indent` options:
 
-        curl "http://localhost:12333/Status?indent=1&compact=1"
+        curl -H "X-Bbpd-Verbose: True" -H "X-Bbpd-Indent: True" "http://localhost:12333/Status"
 
-Which produces a more readable list of available endpoints. You will note that if you omit `compact`, you
-will get some more information including a measure of the duration of the request, which might be useful
-for benchmarking.
+Both of these output modifiers will take effect only if the headers are set, regardless of the
+header value.
 
 Here is an example using GetItem
 
-        curl -X POST -d '{"TableName":"mytable","Key":{"Date":{"N":"20131001"},"UserID":{"N":"1"}}}' "http://localhost:12333/GetItem?indent=1&compact=1"
+        curl -H "X-Bbpd-Verbose: True" -H "X-Bbpd-Indent: True" -X POST -d '{"TableName":"mytable","Key":{"Date":{"N":"20131001"},"UserID":{"N":"1"}}}' "http://localhost:12333/GetItem"
 
 Other endpoints work similarly - you name the endpoint to be called, and provide a JSON serialization of the request you wish
 to submit. `bbpd` takes care of adding authorization and other headers for you.

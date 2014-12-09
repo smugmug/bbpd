@@ -12,4 +12,8 @@ const (
 	PORT          = 12333 // primary port
 	PORT2         = 12334 // secondary
 	LOCALHOST     = "localhost"
+
+	// request headers specific to bbpd
+	X_BBPD_VERBOSE = "X-Bbpd-Verbose"
+	X_BBPD_INDENT  = "X-Bbpd-Indent"
 )
