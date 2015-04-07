@@ -3,7 +3,6 @@ package bbpd_runinfo
 
 import (
 	"errors"
-	"fmt"
 	"log"
 	"net/http"
 	"sync"
@@ -43,7 +42,7 @@ func StopBBPD() error {
 	case <-wait_chan:
 		log.Printf("conns completed, graceful exit possible")
 		return nil
-	case <-time.After(500 * time.Millisecond):
+	case <-time.After(1000 * time.Millisecond):
 		return errors.New("shutdown timed out")
 	}
 	return nil
@@ -62,8 +61,7 @@ func IsAccepting() bool {
 func BBPDAbortIfClosed(w http.ResponseWriter) bool {
 	closed := !IsAccepting()
 	if closed {
-		e := fmt.Sprintf("bbpd no longer accepting connections")
-		log.Printf(e)
+		e := "bbpd is in a closed state and is no longer accepting connections"
 		http.Error(w, e, http.StatusServiceUnavailable)
 	}
 	return closed

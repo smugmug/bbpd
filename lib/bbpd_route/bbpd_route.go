@@ -8,6 +8,7 @@ import (
 	"github.com/smugmug/bbpd/lib/batch_write_item_route"
 	"github.com/smugmug/bbpd/lib/bbpd_const"
 	"github.com/smugmug/bbpd/lib/bbpd_runinfo"
+	"github.com/smugmug/bbpd/lib/bbpd_stats"
 	"github.com/smugmug/bbpd/lib/create_table_route"
 	"github.com/smugmug/bbpd/lib/delete_item_route"
 	"github.com/smugmug/bbpd/lib/describe_table_route"
@@ -84,6 +85,7 @@ type Status_Struct struct {
 	Status            string
 	AvailableHandlers []string
 	Args              map[string]string
+	Summary           bbpd_stats.Summary
 }
 
 func init() {
@@ -140,9 +142,10 @@ func statusHandler(w http.ResponseWriter, req *http.Request) {
 	ss.Args = make(map[string]string)
 	ss.Status = "ready"
 
-	ss.Args[bbpd_const.COMPACT] = "set query arg compact=1 to only receive the response body"
-	ss.Args[bbpd_const.INDENT] = "set query arg indent=1 to indent the top-level json"
+	ss.Args[bbpd_const.X_BBPD_VERBOSE] = "set '-H \"X-Bbpd-Verbose: True\" ' to get verbose output"
+	ss.Args[bbpd_const.X_BBPD_INDENT] = "set '-H \"X-Bbpd-Indent: True\" ' to indent the top-level json"
 	ss.AvailableHandlers = availableHandlers
+	ss.Summary = bbpd_stats.GetSummary()
 	sj, sj_err := json.Marshal(ss)
 	if sj_err != nil {
 		e := fmt.Sprintf("bbpd_route.statusHandler:status marshal err %s", sj_err.Error())

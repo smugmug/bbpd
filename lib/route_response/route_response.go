@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"github.com/smugmug/bbpd/lib/bbpd_const"
 	"github.com/smugmug/bbpd/lib/bbpd_msg"
+	"github.com/smugmug/bbpd/lib/bbpd_stats"
 	ep "github.com/smugmug/godynamo/endpoint"
 	"io"
 	"log"
@@ -33,6 +34,9 @@ func MakeRouteResponse(w http.ResponseWriter, req *http.Request, resp_body []byt
 	end := time.Now()
 	duration := fmt.Sprintf("%v", end.Sub(start))
 	if resp_body != nil && code == http.StatusOK {
+		// add the response to the stats
+		bbpd_stats.AddResponse(start)
+
 		var b []byte
 		var json_err error
 		w.Header().Set(bbpd_const.CONTENTTYPE, bbpd_const.JSONMIME)

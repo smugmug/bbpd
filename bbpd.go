@@ -18,22 +18,22 @@ import (
 
 // handle signals. we prefer 1,3,15 and will panic on 2
 func sigHandle(c <-chan os.Signal) {
-	select {
-	case sig := <-c:
-		switch sig.(os.Signal) {
-		case syscall.SIGTERM,
-			syscall.SIGQUIT,
-			syscall.SIGHUP:
+	for sig := range c {
+		if sig == syscall.SIGTERM || sig == syscall.SIGQUIT || sig == syscall.SIGHUP {
 			log.Printf("*** caught signal %v, stop\n", sig)
+			log.Printf("bbpd is in a closed state and is no longer accepting connections")
 			stop_err := bbpd_route.StopBBPD()
 			if stop_err != nil {
 				log.Printf("graceful shutdown not possible:%s", stop_err.Error())
 			}
 			log.Printf("bbpd exit\n")
 			os.Exit(0)
-		case syscall.SIGINT:
+		} else if sig == syscall.SIGINT {
 			log.Printf("*** caught signal %v, PANIC stop\n", sig)
 			panic("bbpd panic")
+			os.Exit(1)
+		} else {
+			log.Printf("**** caught unchecked signal %v\n", sig)
 		}
 	}
 }
